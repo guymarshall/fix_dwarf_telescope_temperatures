@@ -1,5 +1,6 @@
 use std::fs;
-use std::io;
+use std::fs::File;
+use std::io::{self, Read};
 use std::path::Path;
 use std::process::Command;
 
@@ -26,16 +27,20 @@ fn is_fits_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
+fn file_contains_ccd_temp(path: &Path) -> io::Result<bool> {
+    let mut file: File = File::open(path)?;
+    let mut buf: Vec<u8> = Vec::new();
+    file.read_to_end(&mut buf)?;
+
+    Ok(buf
+        .windows(b"CCD-TEMP".len())
+        .any(|w: &[u8]| w == b"CCD-TEMP"))
+}
+
 fn process_file(path: &Path) -> io::Result<()> {
     let file: std::borrow::Cow<'_, str> = path.to_string_lossy();
 
-    let status: std::process::ExitStatus = Command::new("grep")
-        .arg("-q")
-        .arg("CCD-TEMP")
-        .arg(&*file)
-        .status()?;
-
-    if status.success() {
+    if file_contains_ccd_temp(path)? {
         return Ok(());
     }
 
@@ -56,7 +61,6 @@ fn process_file(path: &Path) -> io::Result<()> {
 }
 
 // TODO: Replace Perl with Rust
-// TODO: Parallelise
 
 fn main() -> io::Result<()> {
     let root: &Path = Path::new(".");
