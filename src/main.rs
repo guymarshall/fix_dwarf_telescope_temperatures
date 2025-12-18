@@ -2,7 +2,6 @@ use std::fs;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
-use std::process::Command;
 
 fn visit_dirs(dir: &Path) -> io::Result<()> {
     if dir.is_dir() {
@@ -37,6 +36,25 @@ fn file_contains_ccd_temp(path: &Path) -> io::Result<bool> {
         .any(|w: &[u8]| w == b"CCD-TEMP"))
 }
 
+fn replace_det_with_ccd(path: &Path) -> io::Result<()> {
+    let data: Vec<u8> = fs::read(path)?;
+    let mut out: Vec<u8> = Vec::with_capacity(data.len());
+
+    let mut i: usize = 0;
+    while i < data.len() {
+        if i + 8 <= data.len() && &data[i..i + 8] == b"DET-TEMP" {
+            out.extend_from_slice(b"CCD-TEMP");
+            i += 8;
+        } else {
+            out.push(data[i]);
+            i += 1;
+        }
+    }
+
+    fs::write(path, out)?;
+    Ok(())
+}
+
 fn process_file(path: &Path) -> io::Result<()> {
     let file: std::borrow::Cow<'_, str> = path.to_string_lossy();
 
@@ -44,23 +62,12 @@ fn process_file(path: &Path) -> io::Result<()> {
         return Ok(());
     }
 
-    let status: std::process::ExitStatus = Command::new("perl")
-        .arg("-pi")
-        .arg("-e")
-        .arg("s/DET-TEMP/CCD-TEMP/g")
-        .arg(&*file)
-        .status()?;
+    replace_det_with_ccd(path)?;
 
     println!("Processed {file}");
 
-    if !status.success() {
-        eprintln!("  Error processing {}", file);
-    }
-
     Ok(())
 }
-
-// TODO: Replace Perl with Rust
 
 fn main() -> io::Result<()> {
     let root: &Path = Path::new(".");
