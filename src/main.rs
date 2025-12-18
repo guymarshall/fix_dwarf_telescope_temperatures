@@ -3,9 +3,9 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
-fn visit_dirs(dir: &Path) -> io::Result<()> {
-    if dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
+fn visit_dirs(directory: &Path) -> io::Result<()> {
+    if directory.is_dir() {
+        for entry in fs::read_dir(directory)? {
             let entry: fs::DirEntry = entry?;
             let path: std::path::PathBuf = entry.path();
 
@@ -21,19 +21,19 @@ fn visit_dirs(dir: &Path) -> io::Result<()> {
 
 fn is_fits_file(path: &Path) -> bool {
     path.extension()
-        .and_then(|e: &std::ffi::OsStr| e.to_str())
-        .map(|e: &str| e.eq_ignore_ascii_case("fits"))
+        .and_then(|extension: &std::ffi::OsStr| extension.to_str())
+        .map(|extension: &str| extension.eq_ignore_ascii_case("fits"))
         .unwrap_or(false)
 }
 
 fn file_contains_ccd_temp(path: &Path) -> io::Result<bool> {
     let mut file: File = File::open(path)?;
-    let mut buf: Vec<u8> = Vec::new();
-    file.read_to_end(&mut buf)?;
+    let mut buffer: Vec<u8> = Vec::new();
+    file.read_to_end(&mut buffer)?;
 
-    Ok(buf
+    Ok(buffer
         .windows(b"CCD-TEMP".len())
-        .any(|w: &[u8]| w == b"CCD-TEMP"))
+        .any(|window: &[u8]| window == b"CCD-TEMP"))
 }
 
 fn replace_det_with_ccd(path: &Path) -> io::Result<()> {
